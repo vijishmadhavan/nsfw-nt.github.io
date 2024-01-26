@@ -87,7 +87,7 @@ cv["onRuntimeInitialized"] = async () => {
 
     console.log("YOLOv8 model and NMS model loaded successfully");
 
-    handleImage("https://hotpotmedia.s3.us-east-2.amazonaws.com/8-9YazjkRBUMNu4oP.png");
+    handleImage("https://uc02fd98cbf9f986a1a643da818f.previews.dropboxusercontent.com/p/thumb/ACKfPqmwJGJ75OTFLiut76EzPeke5Zhy4AU7yvULB-cv6rM-l79MJ7usxAv__gNxPSWm8BAzVO13timrVKclPCeCPwPu7qs2GPt0m5uRylT8Ku_n2gJnKuvMJ0t4mL1c77q3fgEBimEuPlQcqAboEo7rSf3xMbVLPq7YjSEdqbYBRa8lTF_I0Cu3XTrA5CHhS7jzDMo5DO9DUfM7hVa-zI1bdsg_TxNJX68rs9YSRqqECt7o7iIPYKbNgqAHMi8EWandudkSiAicHhxbhkR2a-qORTZUgvZgoXOBydUn5wE0ly24Lz4VtELQ9uBcesDMFcLoezx6UZIaW66tc6aELGr55XAfb2zmWR_9avHl1toiPg/p.png");
   } catch (error) {
     console.error("Error loading models:", error);
   }
@@ -102,7 +102,7 @@ const detectImage = async (
   scoreThreshold,
   inputShape
 ) => {
-  console.log("detectImage function called"); // Add this line
+  console.log("detectImage function called");
 
   const [modelWidth, modelHeight] = inputShape.slice(2);
   const [input, xRatio, yRatio] = preprocessing(image, modelWidth, modelHeight);
@@ -114,6 +114,10 @@ const detectImage = async (
   const { selected } = await session.nms.run({ detection: output0, config: config });
 
   const boxes = [];
+  const labelsOfInterest = [
+    "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED", "BUTTOCKS_EXPOSED", 
+    "ANUS_EXPOSED", "MALE_GENITALIA_EXPOSED"
+  ];
 
   for (let idx = 0; idx < selected.dims[1]; idx++) {
     const data = selected.data.slice(idx * selected.dims[2], (idx + 1) * selected.dims[2]);
@@ -135,15 +139,18 @@ const detectImage = async (
       bounding: [x, y, w, h],
     });
 
-    // Print detected class and percentage in the console
     const detectedClass = labels[label];
-    console.log(`Detected Class: ${detectedClass}, Probability: ${score * 100}%`);
+    if (labelsOfInterest.includes(detectedClass)) {
+      console.log(`Detected Class: ${detectedClass}, Probability: ${score * 100}%`);
+    }
   }
 
-  // Render bounding boxes on the canvas (you can keep this code as is)
-  //renderBoxes(canvas, boxes);
+  // Optionally, you can uncomment the next line to render boxes on the canvas
+  // renderBoxes(canvas, boxes);
+
   input.delete();
 };
+
 
 
 const renderBoxes = (canvas, boxes) => {
@@ -263,4 +270,5 @@ class Colors {
       : null;
   };
 };
+
 
