@@ -44,26 +44,8 @@ const handleImage = async (imageUrl) => {
 
   image.onload = () => {
     console.log("Image loaded successfully");
-    
-    // Reference the main canvas, do not hide it
-    const canvas = document.querySelector("canvas");
-    // canvas.style.display = "none"; // This line is commented out to keep the canvas visible
-
-    // Create a temporary canvas for detection (not displayed)
-    const tempCanvas = document.createElement("canvas");
-    const tempContext = tempCanvas.getContext("2d");
-    tempCanvas.width = image.width;
-    tempCanvas.height = image.height;
-    tempContext.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
-
-    // Now draw the image onto the main canvas
-    const mainContext = canvas.getContext('2d');
-    canvas.width = image.width; // Ensure the canvas size matches the image
-    canvas.height = image.height;
-    mainContext.drawImage(image, 0, 0, image.width, image.height);
-
-    // Perform object detection using the temporary canvas
-    detectImage(tempCanvas, null, mySession, topk, iouThreshold, scoreThreshold, modelInputShape);
+    document.getElementById('displayImage').src = imageUrl;  // Display the image in the browser
+    detectImage(image, mySession, topk, iouThreshold, scoreThreshold, modelInputShape);
   };
 
   image.onerror = (error) => {
@@ -72,8 +54,6 @@ const handleImage = async (imageUrl) => {
 
   image.src = imageUrl;
 };
-
-
 
 
 
@@ -87,21 +67,13 @@ cv["onRuntimeInitialized"] = async () => {
 
     console.log("YOLOv8 model and NMS model loaded successfully");
 
-    handleImage("https://hotpotmedia.s3.us-east-2.amazonaws.com/8-QWcxXaZTVRXFCUr.png");
+    handleImage("https://hotpotmedia.s3.us-east-2.amazonaws.com/8-yIhz1VJ5AkPkTIP.png");
   } catch (error) {
     console.error("Error loading models:", error);
   }
 };
 
-const detectImage = async (
-  image,
-  canvas,
-  session,
-  topk,
-  iouThreshold,
-  scoreThreshold,
-  inputShape
-) => {
+const detectImage = async (image, session, topk, iouThreshold, scoreThreshold, inputShape) => {
   console.log("detectImage function called");
 
   const [modelWidth, modelHeight] = inputShape.slice(2);
@@ -113,94 +85,44 @@ const detectImage = async (
   const { output0 } = await session.net.run({ images: tensor });
   const { selected } = await session.nms.run({ detection: output0, config: config });
 
-  const boxes = [];
+  // Checking if the selected tensor has data
+  if (!selected || !selected.data || selected.data.length === 0) {
+    console.error("No data in selected tensor");
+    return;
+  }
+
   const labelsOfInterest = [
     "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED", "BUTTOCKS_EXPOSED", 
     "ANUS_EXPOSED", "MALE_GENITALIA_EXPOSED"
   ];
 
   for (let idx = 0; idx < selected.dims[1]; idx++) {
-    const data = selected.data.slice(idx * selected.dims[2], (idx + 1) * selected.dims[2]);
-    const box = data.slice(0, 4);
-    const scores = data.slice(4);
-    const score = Math.max(...scores);
-    const label = scores.indexOf(score);
+    // Safely accessing the data with checks
+    const startIdx = idx * selected.dims[2];
+    const endIdx = startIdx + selected.dims[2];
+    if (endIdx > selected.data.length) {
+      console.error("Index out of bounds");
+      continue;
+    }
 
-    const [x, y, w, h] = [
-      (box[0] - 0.5 * box[2]) * xRatio,
-      (box[1] - 0.5 * box[3]) * yRatio,
-      box[2] * xRatio,
-      box[3] * yRatio,
-    ];
+    const data = selected.data.slice(startIdx, endIdx);
+    const score = Math.max(...data.slice(4));
+    const labelIndex = data.indexOf(score) - 4;
 
-    boxes.push({
-      label: label,
-      probability: score,
-      bounding: [x, y, w, h],
-    });
+    if (labelIndex < 0 || labelIndex >= labels.length) {
+      console.error("Invalid label index");
+      continue;
+    }
 
-    const detectedClass = labels[label];
+    const detectedClass = labels[labelIndex];
     if (labelsOfInterest.includes(detectedClass)) {
       console.log(`Detected Class: ${detectedClass}, Probability: ${score * 100}%`);
     }
   }
 
-  // Optionally, you can uncomment the next line to render boxes on the canvas
-  // renderBoxes(canvas, boxes);
-
   input.delete();
 };
 
-
-
-const renderBoxes = (canvas, boxes) => {
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  const colors = new Colors();
-
-  const font = `${Math.max(
-    Math.round(Math.max(ctx.canvas.width, ctx.canvas.height) / 40),
-    14
-  )}px Arial`;
-  ctx.font = font;
-  ctx.textBaseline = "top";
-
-  boxes.forEach((box) => {
-    const klass = labels[box.label];
-    const color = colors.get(box.label);
-    const score = (box.probability * 100).toFixed(1);
-    const [x1, y1, width, height] = box.bounding;
-
-    ctx.fillStyle = Colors.hexToRgba(color, 0.2);
-    ctx.fillRect(x1, y1, width, height);
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(
-      Math.min(ctx.canvas.width, ctx.canvas.height) / 200,
-      2.5
-    );
-    ctx.strokeRect(x1, y1, width, height);
-
-    ctx.fillStyle = color;
-    const textWidth = ctx.measureText(klass + " - " + score + "%").width;
-    const textHeight = parseInt(font, 10);
-    const yText = y1 - (textHeight + ctx.lineWidth);
-    ctx.fillRect(
-      x1 - 1,
-      yText < 0 ? 0 : yText,
-      textWidth + ctx.lineWidth,
-      textHeight + ctx.lineWidth
-    );
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(
-      klass + " - " + score + "%",
-      x1 - 1,
-      yText < 0 ? 1 : yText + 1
-    );
-  });
-};
 
 const preprocessing = (source, modelWidth, modelHeight) => {
   const mat = cv.imread(source);
@@ -230,45 +152,4 @@ const preprocessing = (source, modelWidth, modelHeight) => {
 
   return [input, xRatio, yRatio];
 };
-
-class Colors {
-  constructor() {
-    this.palette = [
-      "#FF3838",
-      "#FF9D97",
-      "#FF701F",
-      "#FFB21D",
-      "#CFD231",
-      "#48F90A",
-      "#92CC17",
-      "#3DDB86",
-      "#1A9334",
-      "#00D4BB",
-      "#2C99A8",
-      "#00C2FF",
-      "#344593",
-      "#6473FF",
-      "#0018EC",
-      "#8438FF",
-      "#520085",
-      "#CB38FF",
-      "#FF95C8",
-      "#FF37C7",
-    ];
-    this.n = this.palette.length;
-  }
-
-  get = (i) => this.palette[Math.floor(i) % this.n];
-  static hexToRgba = (hex, alpha) => {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-      ? `rgba(${[
-          parseInt(result[1], 16),
-          parseInt(result[2], 16),
-          parseInt(result[3], 16),
-        ].join(", ")}, ${alpha})`
-      : null;
-  };
-};
-
 
