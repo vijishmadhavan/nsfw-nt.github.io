@@ -87,7 +87,7 @@ cv["onRuntimeInitialized"] = async () => {
 
     console.log("YOLOv8 model and NMS model loaded successfully");
 
-    handleImage("https://uc02fd98cbf9f986a1a643da818f.previews.dropboxusercontent.com/p/thumb/ACKfPqmwJGJ75OTFLiut76EzPeke5Zhy4AU7yvULB-cv6rM-l79MJ7usxAv__gNxPSWm8BAzVO13timrVKclPCeCPwPu7qs2GPt0m5uRylT8Ku_n2gJnKuvMJ0t4mL1c77q3fgEBimEuPlQcqAboEo7rSf3xMbVLPq7YjSEdqbYBRa8lTF_I0Cu3XTrA5CHhS7jzDMo5DO9DUfM7hVa-zI1bdsg_TxNJX68rs9YSRqqECt7o7iIPYKbNgqAHMi8EWandudkSiAicHhxbhkR2a-qORTZUgvZgoXOBydUn5wE0ly24Lz4VtELQ9uBcesDMFcLoezx6UZIaW66tc6aELGr55XAfb2zmWR_9avHl1toiPg/p.png");
+    handleImage("https://hotpotmedia.s3.us-east-2.amazonaws.com/8-QWcxXaZTVRXFCUr.png");
   } catch (error) {
     console.error("Error loading models:", error);
   }
