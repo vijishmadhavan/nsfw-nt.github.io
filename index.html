@@ -10,18 +10,42 @@
 
 <body>
     <div id="header">
-        <p>Serving : <code class="code">yolov8n.onnx</code></p>
-        <p>Size : <code class="code">320x320</code></p> <!-- Adjusted to match your JavaScript config -->
+        <p>Serving: <code class="code">yolov8n.onnx</code></p>
+        <p>Size: <code class="code">320x320</code></p>
     </div>
     <div id="root">
-        <div class="App">      
-            <div class="content"> 
-                <img id="displayImage" src="" alt="Displayed Image" style="max-width:100%; height:auto; margin-bottom: 20px;"> <!-- Image element added here -->             
-                <canvas id="canvas" width="320" height="320"></canvas> <!-- Adjusted size and added id -->
-            </div> 
+        <div class="App">
+            <div class="content">
+                <img id="displayImage" src="" alt="Displayed Image" style="max-width:100%; height:auto; margin-bottom: 20px;">
+                <canvas id="canvas" width="320" height="320" style="display:none;"></canvas> <!-- Hide the canvas initially -->
+            </div>
         </div>
     </div>
-    <script src="js/main.js"></script>
+    <script>
+        // Moved the script contents into the HTML file for clarity in this example
+        // Ensure your js/main1.js contains the adapted script with isNsfw function and related logic
+    </script>
+    <script src="js/main.js" defer></script> <!-- Use defer to ensure this script loads after the DOM is ready -->
+    <script>
+        // This script tag can initialize and call your NSFW detection function after the page has loaded
+        window.onload = () => {
+            // Specify the URL of the image here
+            const imageUrl = "https://m.media-amazon.com/images/I/61GgpY5juLL._AC_UY350_.jpg";
+            // Assuming isNsfw function is correctly defined and exposed in your main1.js file
+            isNsfw(imageUrl).then(isNsfwContent => {
+                console.log("NSFW content detected:", isNsfwContent);
+                // Update the displayed image only if it's safe
+                if (!isNsfwContent) {
+                    document.getElementById("displayImage").src = imageUrl;
+                } else {
+                    // Handle NSFW content according to your application's policy
+                    console.warn("NSFW content! Image not displayed.");
+                }
+            }).catch(error => {
+                console.error("Error detecting NSFW content:", error);
+            });
+        };
+    </script>
 </body>
-</html>
 
+</html>
