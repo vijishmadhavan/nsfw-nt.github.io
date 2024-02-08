@@ -1,3 +1,5 @@
+// Assuming OpenCV and face-api.js are already included in your HTML file
+
 const labels = [
   "FEMALE_GENITALIA_COVERED",
   "FACE_FEMALE",
@@ -36,16 +38,21 @@ const topk = 100;
 const iouThreshold = 0.45;
 const scoreThreshold = 0.2;
 
-
-
 const handleImage = async (imageUrl) => {
   const image = new Image();
   image.crossOrigin = "anonymous";
 
-  image.onload = () => {
+  image.onload = async () => {
     console.log("Image loaded successfully");
     document.getElementById('displayImage').src = imageUrl;  // Display the image in the browser
-    detectImage(image, mySession, topk, iouThreshold, scoreThreshold, modelInputShape);
+
+    // Detect age and gender first
+    const { detections } = await detectAgeFromImage(imageUrl);
+    // Pass the detected age to detectImage
+    detections.forEach((detection, index) => {
+      const detectedAge = Math.round(detection.age);
+      detectImage(image, mySession, topk, iouThreshold, scoreThreshold, modelInputShape, detectedAge);
+    });
   };
 
   image.onerror = (error) => {
@@ -55,10 +62,13 @@ const handleImage = async (imageUrl) => {
   image.src = imageUrl;
 };
 
-
-
 cv["onRuntimeInitialized"] = async () => {
   try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+      faceapi.nets.ageGenderNet.loadFromUri('/models')
+    ]);
+
     const [yolov8, nms] = await Promise.all([
       ort.InferenceSession.create(`model/${modelName}`),
       ort.InferenceSession.create(`model/nms-yolov8.onnx`),
@@ -73,7 +83,7 @@ cv["onRuntimeInitialized"] = async () => {
   }
 };
 
-const detectImage = async (image, session, topk, iouThreshold, scoreThreshold, inputShape) => {
+const detectImage = async (image, session, topk, iouThreshold, scoreThreshold, inputShape, detectedAge) => {
   console.log("detectImage function called");
 
   const [modelWidth, modelHeight] = inputShape.slice(2);
@@ -91,10 +101,15 @@ const detectImage = async (image, session, topk, iouThreshold, scoreThreshold, i
     return;
   }
 
-  const labelsOfInterest = [
+  let labelsOfInterest = [
     "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED", "BUTTOCKS_EXPOSED", 
     "ANUS_EXPOSED", "MALE_GENITALIA_EXPOSED"
   ];
+
+  if (detectedAge < 15) {
+    // If age is less than 15, include additional covered classes
+    labelsOfInterest = labelsOfInterest.concat(["FEMALE_GENITALIA_COVERED", "BUTTOCKS_COVERED", "FEMALE_BREAST_COVERED", "ANUS_COVERED"]);
+  }
 
   for (let idx = 0; idx < selected.dims[1]; idx++) {
     // Safely accessing the data with checks
@@ -122,7 +137,6 @@ const detectImage = async (image, session, topk, iouThreshold, scoreThreshold, i
 
   input.delete();
 };
-
 
 const preprocessing = (source, modelWidth, modelHeight) => {
   const mat = cv.imread(source);
@@ -152,4 +166,27 @@ const preprocessing = (source, modelWidth, modelHeight) => {
 
   return [input, xRatio, yRatio];
 };
+
+// Add the detectAgeFromImage function here
+async function detectAgeFromImage(imageUrl) {
+  const img = new Image();
+  img.crossOrigin = "anonymous"; // This is important for loading images from external URLs
+
+  return new Promise((resolve, reject) => {
+    img.onload = async () => {
+      // Now that the image is loaded, we can detect faces and predict age/gender
+      const detections = await faceapi.detectAllFaces(img).withAgeAndGender();
+      // Log the results
+      detections.forEach((detection, index) => {
+        console.log(`Face ${index + 1}: Age - ${Math.round(detection.age)}, Gender - ${detection.gender}`);
+      });
+      resolve({ detections });
+    };
+    img.onerror = (error) => {
+      console.error("Error loading the image: ", error);
+      reject(error);
+    };
+    img.src = imageUrl;
+  });
+}
 
