@@ -172,8 +172,8 @@ async function detectAgeFromImage(image) {
 cv['onRuntimeInitialized'] = async () => {
     try {
         const [yolov8, nms] = await Promise.all([
-            ort.InferenceSession.create(`nsfw/${modelName}`),
-            ort.InferenceSession.create(`nsfw/nms-yolov8.onnx`),
+            ort.InferenceSession.create(`/nsfw/${modelName}`),
+            ort.InferenceSession.create(`/nsfw/nms-yolov8.onnx`),
         ]);
 
         myYolo = yolov8;
