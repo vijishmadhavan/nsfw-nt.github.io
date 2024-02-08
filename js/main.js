@@ -65,8 +65,8 @@ const handleImage = async (imageUrl) => {
 cv["onRuntimeInitialized"] = async () => {
   try {
     await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-      faceapi.nets.ageGenderNet.loadFromUri('/models')
+      faceapi.nets.ssdMobilenetv1.loadFromUri('models'),
+      faceapi.nets.ageGenderNet.loadFromUri('models')
     ]);
 
     const [yolov8, nms] = await Promise.all([
