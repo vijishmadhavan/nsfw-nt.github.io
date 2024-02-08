@@ -48,11 +48,15 @@ const handleImage = async (imageUrl) => {
 
     // Detect age and gender first
     const { detections } = await detectAgeFromImage(imageUrl);
-    // Pass the detected age to detectImage
-    detections.forEach((detection, index) => {
-      const detectedAge = Math.round(detection.age);
-      detectImage(image, mySession, topk, iouThreshold, scoreThreshold, modelInputShape, detectedAge);
-    });
+    
+    // Gather all detected ages
+    const detectedAges = detections.map(detection => Math.round(detection.age));
+    
+    // Get the minimum detected age
+    const minAge = Math.min(...detectedAges);
+    
+    // Pass the minimum detected age to detectImage
+    detectImage(image, mySession, topk, iouThreshold, scoreThreshold, modelInputShape, minAge);
   };
 
   image.onerror = (error) => {
@@ -189,4 +193,5 @@ async function detectAgeFromImage(imageUrl) {
     img.src = imageUrl;
   });
 }
+
 
