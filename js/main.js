@@ -23,7 +23,6 @@ const NsfwLabels = [
     'FEMALE_BREAST_EXPOSED',
     'FEMALE_GENITALIA_EXPOSED',
     'BUTTOCKS_EXPOSED',
-    'BUTTOCKS_COVERED',
     'ANUS_EXPOSED',
     'MALE_GENITALIA_EXPOSED',
 ];
@@ -41,9 +40,11 @@ const iouThreshold = 0.45;
 const scoreThreshold = 0.2;
 
 async function isNsfw(imageUrl) {
-    if (!faceapiInitialized) {
-        await initializeFaceAPI();
+    if (!modelsLoaded) {
+        console.log('Waiting for models to load...');
+        await loadModels(); // Ensure models are loaded
     }
+
     return new Promise((resolve, reject) => {
         const image = new Image();
         image.crossOrigin = 'anonymous';
@@ -59,6 +60,7 @@ async function isNsfw(imageUrl) {
                 const result = await detectNsfw(tempCanvas, topk, iouThreshold, scoreThreshold, modelInputShape);
                 resolve(result);
             } catch (error) {
+                console.error('Error detecting NSFW content: ', error);
                 reject(error);
             }
         };
@@ -73,13 +75,9 @@ async function isNsfw(imageUrl) {
 };
 
 async function detectNsfw(image, topk, iouThreshold, scoreThreshold, inputShape) {
-    const detectedAge = await detectAgeFromImage(image);
-    console.log('Detected age:', detectedAge);
-
-    if (detectedAge < 21) {
-        // Age less than 21, additional covered classes are included
-        NsfwLabels.push('FEMALE_GENITALIA_COVERED', 'BUTTOCKS_COVERED', 'FEMALE_BREAST_COVERED', 'ANUS_COVERED');
-    }
+    let foundNsfw = false;
+    let ageChecked = false;
+    let detectedAge = null;
 
     const [modelWidth, modelHeight] = inputShape.slice(2);
     const [input, xRatio, yRatio] = preprocessing(image, modelWidth, modelHeight);
@@ -90,26 +88,35 @@ async function detectNsfw(image, topk, iouThreshold, scoreThreshold, inputShape)
     const { output0 } = await myYolo.run({ images: tensor });
     const { selected } = await myNms.run({ detection: output0, config: config });
 
-    let foundNsfw = false;
-
     for (let idx = 0; idx < selected.dims[1]; idx++) {
         const data = selected.data.slice(idx * selected.dims[2], (idx + 1) * selected.dims[2]);
         const box = data.slice(0, 4);
         const scores = data.slice(4);
         const score = Math.max(...scores);
-        const label = scores.indexOf(score);
+        const labelIndex = scores.indexOf(score);
+        const detectedClass = AllLabels[labelIndex];
 
-        const [x, y, w, h] = [
-            (box[0] - 0.5 * box[2]) * xRatio,
-            (box[1] - 0.5 * box[3]) * yRatio,
-            box[2] * xRatio,
-            box[3] * yRatio,
-        ];
 
-        const detectedClass = AllLabels[label];
-        if (NsfwLabels.includes(detectedClass)) {
-            console.log(`Detected class: ${detectedClass}, Score: ${score}`);
-            if (score > NsfwScore) {
+        // Check for always NSFW labels
+        if (NsfwLabels.includes(detectedClass) && score > NsfwScore) {
+            console.log(`Detected NSFW class: ${detectedClass}, Score: ${score}`);
+            foundNsfw = true;
+            break;
+        }
+
+        // Conditional loading and use of FaceAPI for age detection
+        if (['FEMALE_GENITALIA_COVERED', 'BUTTOCKS_COVERED', 'FEMALE_BREAST_COVERED', 'ANUS_COVERED'].includes(detectedClass) && !ageChecked) {
+            if (!faceapiInitialized) {
+                // Initialize FaceAPI if it hasn't been already
+                await initializeFaceAPI();
+            }
+            detectedAge = await detectAgeFromImage(image);
+            console.log(`Detected age: ${detectedAge}`); // Print detected age
+            ageChecked = true;
+
+            // If age detection is necessary and results in an NSFW determination
+            if (detectedAge !== null && detectedAge < 21 && score > NsfwScore) {
+                console.log(`NSFW content detected due to age restriction. Class: ${detectedClass}, Age: ${detectedAge}`);
                 foundNsfw = true;
                 break;
             }
@@ -117,9 +124,10 @@ async function detectNsfw(image, topk, iouThreshold, scoreThreshold, inputShape)
     }
 
     input.delete();
-
     return foundNsfw;
-};
+}
+
+
 
 function preprocessing(source, modelWidth, modelHeight) {
     const mat = cv.imread(source);
@@ -169,7 +177,10 @@ async function detectAgeFromImage(image) {
     return Math.round(averageAge);
 }
 
-cv['onRuntimeInitialized'] = async () => {
+let modelsLoaded = false;
+
+// Function to load models, setting the flag to true once done
+async function loadModels() {
     try {
         const [yolov8, nms] = await Promise.all([
             ort.InferenceSession.create(`nsfw/${modelName}`),
@@ -178,10 +189,11 @@ cv['onRuntimeInitialized'] = async () => {
 
         myYolo = yolov8;
         myNms = nms;
-
+        modelsLoaded = true; // Models are successfully loaded
     } catch (error) {
         console.error('Error loading models: ', error);
+        modelsLoaded = false; // Ensure flag is false if loading fails
+        throw error; // Rethrow or handle error appropriately
     }
-};
-
+}
 
