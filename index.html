@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
-    <script defer src="js/face-api.min.js"></script> <!-- Ensure this path is correct -->
-    <script src="js/opencv.js"></script>
-    <link href="css/style.css" relstylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js" crossorigin="anonymous"></script>
+    <script defer src="js/face-api.min.js" crossorigin="anonymous"></script> <!-- Ensure this path is correct -->
+    <script src="js/opencv.js" crossorigin="anonymous"></script>
+    <link href="css/style.css" rel="stylesheet" crossorigin="anonymous">
 </head>
 
 <body>
@@ -16,17 +16,13 @@
     <div id="root">
         <div class="App">
             <div class="content">
-                <img id="displayImage" src="" alt="Displayed Image" style="max-width:100%; height:auto; margin-bottom: 20px;">
+                <img id="displayImage" src="" alt="Displayed Image" style="max-width:100%; height:auto; margin-bottom: 20px;" crossorigin="anonymous">
                 <canvas id="canvas" width="320" height="320" style="display:none;"></canvas> <!-- Hide the canvas initially -->
             </div>
         </div>
     </div>
-    <script>
-        // Moved the script contents into the HTML file for clarity in this example
-        // Ensure your js/main1.js contains the adapted script with isNsfw function and related logic
-    </script>
-    <script src="js/main.js" defer></script> <!-- Use defer to ensure this script loads after the DOM is ready -->
-    <script>
+    <script src="js/main3.js" defer crossorigin="anonymous"></script> <!-- Use defer to ensure this script loads after the DOM is ready -->
+    <script crossorigin="anonymous">
         // This script tag can initialize and call your NSFW detection function after the page has loaded
         window.onload = () => {
             // Specify the URL of the image here
