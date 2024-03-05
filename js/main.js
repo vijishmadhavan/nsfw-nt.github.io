@@ -114,6 +114,13 @@ async function detectNsfw(image, topk, iouThreshold, scoreThreshold, inputShape)
             console.log(`Detected age: ${detectedAge}`); // Print detected age
             ageChecked = true;
 
+            // Consider images without detectable faces as NSFW
+            if (detectedAge === null) {
+                console.log(`No face detected, marking as NSFW due to policy.`);
+                foundNsfw = true;
+                break;
+            }
+            
             // If age detection is necessary and results in an NSFW determination
             if (detectedAge !== null && detectedAge < 21 && score > NsfwScore) {
                 console.log(`NSFW content detected due to age restriction. Class: ${detectedClass}, Age: ${detectedAge}`);
